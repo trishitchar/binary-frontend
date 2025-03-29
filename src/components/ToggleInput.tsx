@@ -1,4 +1,5 @@
 import { useState, useRef, ChangeEvent } from 'react';
+import {summarizeText} from '../utils/routes';
 
 export default function ToggleInput() {
   const [activeTab, setActiveTab] = useState<'text' | 'file'>('text');
@@ -6,13 +7,14 @@ export default function ToggleInput() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleTextSubmit = () => {
+  const handleTextSubmit = async () => {
     if (!textInput.trim()) {
       alert('Please enter some text');
       return;
     }
+    const response = await summarizeText(textInput);
     console.log('Text submitted:', textInput);
-    // Add your submission logic here
+    console.log('Response:', response);
   };
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
