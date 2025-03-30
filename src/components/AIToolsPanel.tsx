@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import AIChatPopup from './AIChatPopup';
 import AIQuizPopup from './AIQuizPopup';
+import { uploadPdf } from '../utils/routes';
 
 interface AIToolsPanelProps {
   onAction: (action: string, options?: any) => void;
@@ -13,6 +14,7 @@ const aiActions = [
   { id: 'cheatsheet', label: 'Create Cheatsheet', icon: '📋', description: 'Short crisp points' },
   { id: 'reading-time', label: 'Estimate Reading Time', icon: '⏱️', description: 'Time to read this note' },
   { id: 'translate', label: 'Translate', icon: '🌐', description: 'Convert to another language' },
+  { id: 'uploadPdf', label: 'Upload PDF', icon: '📥', description: 'Upload a PDF file' },
 ];
 
 const extraActions = [
@@ -23,12 +25,36 @@ const extraActions = [
 export default function AIToolsPanel({ onAction, isProcessing }: AIToolsPanelProps) {
   const [activePopup, setActivePopup] = useState<string | null>(null);
   const [language, setLanguage] = useState('spanish');
+  const [pdfResponse, setPdfResponse] = useState<any>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleAction = (actionId: string) => {
     if (actionId === 'translate') {
       onAction('translate', { language });
+    } else if (actionId === 'uploadPdf') {
+      // Trigger file input click when upload PDF button is clicked
+      fileInputRef.current?.click();
     } else {
       onAction(actionId);
+    }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const response = await uploadPdf(file);
+      setPdfResponse(response);
+      setActivePopup('pdfResponse');
+    } catch (error) {
+      console.error('Error uploading PDF:', error);
+      // You might want to show an error message to the user here
+    } finally {
+      // Reset the file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
@@ -37,6 +63,15 @@ export default function AIToolsPanel({ onAction, isProcessing }: AIToolsPanelPro
       <h3 className="font-medium text-lg mb-4 text-gray-700 flex items-center">
         <span className="mr-2">✨</span> AI Assistant
       </h3>
+
+      {/* Hidden file input */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        accept=".pdf"
+        className="hidden"
+      />
 
       <div className="space-y-3 mb-6">
         {aiActions.map(action => (
@@ -102,6 +137,38 @@ export default function AIToolsPanel({ onAction, isProcessing }: AIToolsPanelPro
       )}
       {activePopup === 'quiz' && (
         <AIQuizPopup onClose={() => setActivePopup(null)} />
+      )}
+      {activePopup === 'pdfResponse' && pdfResponse && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-medium">PDF Upload Result</h3>
+              <button 
+                onClick={() => {
+                  setActivePopup(null);
+                  setPdfResponse(null);
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="bg-gray-50 p-4 rounded">
+              <pre className="whitespace-pre-wrap text-sm">{JSON.stringify(pdfResponse, null, 2)}</pre>
+            </div>
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={() => {
+                  setActivePopup(null);
+                  setPdfResponse(null);
+                }}
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
